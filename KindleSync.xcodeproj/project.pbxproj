@@ -19,6 +19,7 @@
 		AA000061 /* KindleAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000060 /* KindleAPIClient.swift */; };
 		AA000071 /* SyncStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000070 /* SyncStateStore.swift */; };
 		AA000081 /* NoteFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000080 /* NoteFormatter.swift */; };
+		AA000091 /* AppleNotesWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000090 /* AppleNotesWriter.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,6 +39,7 @@
 		AA000060 /* KindleAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KindleAPIClient.swift; sourceTree = "<group>"; };
 		AA000070 /* SyncStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStateStore.swift; sourceTree = "<group>"; };
 		AA000080 /* NoteFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteFormatter.swift; sourceTree = "<group>"; };
+		AA000090 /* AppleNotesWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleNotesWriter.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -116,6 +118,7 @@
 			isa = PBXGroup;
 			children = (
 				AA000080 /* NoteFormatter.swift */,
+				AA000090 /* AppleNotesWriter.swift */,
 			);
 			path = Notes;
 			sourceTree = "<group>";
@@ -252,6 +255,7 @@
 				AA000061 /* KindleAPIClient.swift in Sources */,
 				AA000071 /* SyncStateStore.swift in Sources */,
 				AA000081 /* NoteFormatter.swift in Sources */,
+				AA000091 /* AppleNotesWriter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
