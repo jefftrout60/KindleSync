@@ -1,5 +1,6 @@
 import SwiftUI
 import Foundation
+import UserNotifications
 
 enum SyncStatus: Equatable {
     case idle
@@ -16,6 +17,7 @@ final class SyncManager: ObservableObject {
 
     private(set) var storedCookies: [HTTPCookie] = []
 
+    private let engine = KindleSyncEngine()
     private let lastSyncKey = "lastSyncDate"
     private let syncIntervalSeconds: TimeInterval = 7 * 24 * 3600 // 7 days
 
@@ -39,10 +41,18 @@ final class SyncManager: ObservableObject {
     func sync() async {
         guard status != .syncing else { return }
         status = .syncing
-        // Full implementation wired in task 5.1
-        // Stub: simulate completion
-        try? await Task.sleep(nanoseconds: 1_000_000_000)
-        status = .idle
+        do {
+            let result = try await engine.sync(cookies: storedCookies)
+            status = .success(result.completedAt)
+            markSyncComplete()
+        } catch SyncError.sessionExpired {
+            status = .needsAuth
+            isAuthenticated = false
+            NotificationManager.notifyNeedsAuth()
+        } catch {
+            status = .failed(error.localizedDescription)
+            NotificationManager.notifyFailure(error.localizedDescription)
+        }
     }
 
     func checkAndSchedule() {

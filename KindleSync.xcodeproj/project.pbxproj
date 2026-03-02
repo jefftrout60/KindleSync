@@ -20,6 +20,8 @@
 		AA000071 /* SyncStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000070 /* SyncStateStore.swift */; };
 		AA000081 /* NoteFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000080 /* NoteFormatter.swift */; };
 		AA000091 /* AppleNotesWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000090 /* AppleNotesWriter.swift */; };
+		AA000111 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000110 /* NotificationManager.swift */; };
+		AA000101 /* KindleSyncEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000100 /* KindleSyncEngine.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,6 +42,8 @@
 		AA000070 /* SyncStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStateStore.swift; sourceTree = "<group>"; };
 		AA000080 /* NoteFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteFormatter.swift; sourceTree = "<group>"; };
 		AA000090 /* AppleNotesWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleNotesWriter.swift; sourceTree = "<group>"; };
+		AA000110 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
+		AA000100 /* KindleSyncEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KindleSyncEngine.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -110,6 +114,7 @@
 				AA000042 /* SyncStateModels.swift */,
 				AA000060 /* KindleAPIClient.swift */,
 				AA000070 /* SyncStateStore.swift */,
+				AA000100 /* KindleSyncEngine.swift */,
 			);
 			path = Sync;
 			sourceTree = "<group>";
@@ -134,6 +139,7 @@
 		AA000025 /* Utilities */ = {
 			isa = PBXGroup;
 			children = (
+				AA000110 /* NotificationManager.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -256,6 +262,8 @@
 				AA000071 /* SyncStateStore.swift in Sources */,
 				AA000081 /* NoteFormatter.swift in Sources */,
 				AA000091 /* AppleNotesWriter.swift in Sources */,
+				AA000111 /* NotificationManager.swift in Sources */,
+				AA000101 /* KindleSyncEngine.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
