@@ -17,6 +17,8 @@
 		AA000043 /* SyncStateModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000042 /* SyncStateModels.swift */; };
 		AA000051 /* AmazonAuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000050 /* AmazonAuthView.swift */; };
 		AA000061 /* KindleAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000060 /* KindleAPIClient.swift */; };
+		AA000071 /* SyncStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000070 /* SyncStateStore.swift */; };
+		AA000081 /* NoteFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000080 /* NoteFormatter.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -34,6 +36,8 @@
 		AA000042 /* SyncStateModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStateModels.swift; sourceTree = "<group>"; };
 		AA000050 /* AmazonAuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AmazonAuthView.swift; sourceTree = "<group>"; };
 		AA000060 /* KindleAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KindleAPIClient.swift; sourceTree = "<group>"; };
+		AA000070 /* SyncStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStateStore.swift; sourceTree = "<group>"; };
+		AA000080 /* NoteFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteFormatter.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -103,6 +107,7 @@
 				AA000040 /* KindleModels.swift */,
 				AA000042 /* SyncStateModels.swift */,
 				AA000060 /* KindleAPIClient.swift */,
+				AA000070 /* SyncStateStore.swift */,
 			);
 			path = Sync;
 			sourceTree = "<group>";
@@ -110,6 +115,7 @@
 		AA000023 /* Notes */ = {
 			isa = PBXGroup;
 			children = (
+				AA000080 /* NoteFormatter.swift */,
 			);
 			path = Notes;
 			sourceTree = "<group>";
@@ -244,6 +250,8 @@
 				AA000043 /* SyncStateModels.swift in Sources */,
 				AA000051 /* AmazonAuthView.swift in Sources */,
 				AA000061 /* KindleAPIClient.swift in Sources */,
+				AA000071 /* SyncStateStore.swift in Sources */,
+				AA000081 /* NoteFormatter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
