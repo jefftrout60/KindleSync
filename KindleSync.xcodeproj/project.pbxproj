@@ -13,6 +13,8 @@
 		AA000027 /* MenuBarContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000026 /* MenuBarContentView.swift */; };
 		AA000029 /* SyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000028 /* SyncManager.swift */; };
 		AA000031 /* CookieKeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000030 /* CookieKeychainStore.swift */; };
+		AA000041 /* KindleModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000040 /* KindleModels.swift */; };
+		AA000043 /* SyncStateModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000042 /* SyncStateModels.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -26,6 +28,8 @@
 		AA000026 /* MenuBarContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarContentView.swift; sourceTree = "<group>"; };
 		AA000028 /* SyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncManager.swift; sourceTree = "<group>"; };
 		AA000030 /* CookieKeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CookieKeychainStore.swift; sourceTree = "<group>"; };
+		AA000040 /* KindleModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KindleModels.swift; sourceTree = "<group>"; };
+		AA000042 /* SyncStateModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStateModels.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -91,6 +95,8 @@
 		AA000022 /* Sync */ = {
 			isa = PBXGroup;
 			children = (
+				AA000040 /* KindleModels.swift */,
+				AA000042 /* SyncStateModels.swift */,
 			);
 			path = Sync;
 			sourceTree = "<group>";
@@ -228,6 +234,8 @@
 				AA000027 /* MenuBarContentView.swift in Sources */,
 				AA000029 /* SyncManager.swift in Sources */,
 				AA000031 /* CookieKeychainStore.swift in Sources */,
+				AA000041 /* KindleModels.swift in Sources */,
+				AA000043 /* SyncStateModels.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
