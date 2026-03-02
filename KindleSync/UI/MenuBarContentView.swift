@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MenuBarContentView: View {
     @EnvironmentObject var syncManager: SyncManager
+    @State private var showAuthSheet = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -28,5 +29,15 @@ struct MenuBarContentView: View {
         }
         .padding()
         .frame(width: 220)
+        .onAppear {
+            if !syncManager.isAuthenticated {
+                showAuthSheet = true
+            }
+        }
+        .sheet(isPresented: $showAuthSheet) {
+            AmazonAuthSheet { cookies in
+                syncManager.handleLoginSuccess(cookies)
+            }
+        }
     }
 }

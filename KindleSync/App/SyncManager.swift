@@ -14,13 +14,26 @@ final class SyncManager: ObservableObject {
     @Published var status: SyncStatus = .idle
     @Published var isAuthenticated: Bool = false
 
+    private(set) var storedCookies: [HTTPCookie] = []
+
     private let lastSyncKey = "lastSyncDate"
     private let syncIntervalSeconds: TimeInterval = 7 * 24 * 3600 // 7 days
 
     init() {
-        // Check if credentials exist in Keychain on startup
-        // Full check wired in task 2.3; for now just set false
-        isAuthenticated = false
+        if let cookies = try? CookieKeychainStore.load(),
+           !CookieKeychainStore.areCookiesExpired(cookies) {
+            storedCookies = cookies
+            isAuthenticated = true
+        } else {
+            isAuthenticated = false
+        }
+    }
+
+    func handleLoginSuccess(_ cookies: [HTTPCookie]) {
+        try? CookieKeychainStore.save(cookies)
+        storedCookies = cookies
+        isAuthenticated = true
+        checkAndSchedule()
     }
 
     func sync() async {
