@@ -12,6 +12,7 @@
 		AA000018 /* KindleSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000017 /* KindleSyncTests.swift */; };
 		AA000027 /* MenuBarContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000026 /* MenuBarContentView.swift */; };
 		AA000029 /* SyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000028 /* SyncManager.swift */; };
+		AA000031 /* CookieKeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000030 /* CookieKeychainStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -24,6 +25,7 @@
 		AA000017 /* KindleSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KindleSyncTests.swift; sourceTree = "<group>"; };
 		AA000026 /* MenuBarContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarContentView.swift; sourceTree = "<group>"; };
 		AA000028 /* SyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncManager.swift; sourceTree = "<group>"; };
+		AA000030 /* CookieKeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CookieKeychainStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -81,6 +83,7 @@
 		AA000021 /* Auth */ = {
 			isa = PBXGroup;
 			children = (
+				AA000030 /* CookieKeychainStore.swift */,
 			);
 			path = Auth;
 			sourceTree = "<group>";
@@ -224,6 +227,7 @@
 				AA000011 /* KindleSyncApp.swift in Sources */,
 				AA000027 /* MenuBarContentView.swift in Sources */,
 				AA000029 /* SyncManager.swift in Sources */,
+				AA000031 /* CookieKeychainStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
