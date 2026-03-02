@@ -55,7 +55,7 @@ struct AmazonAuthView: NSViewRepresentable {
                 .httpCookieStore.getAllCookies { [weak self] cookies in
                     guard let self else { return }
                     let amazonCookies = cookies.filter {
-                        $0.domain.hasSuffix("amazon.com") || $0.domain.hasSuffix(".amazon.com")
+                        $0.domain == "amazon.com" || $0.domain.hasSuffix(".amazon.com")
                     }
                     self.onLoginSuccess(amazonCookies)
                 }

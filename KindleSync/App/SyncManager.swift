@@ -71,6 +71,9 @@ final class SyncManager: ObservableObject {
             status = .needsAuth
             isAuthenticated = false
             NotificationManager.notifyNeedsAuth()
+        } catch SyncError.alreadyInProgress {
+            // Another sync is in progress — silently ignore
+            status = .idle
         } catch {
             status = .failed(error.localizedDescription)
             NotificationManager.notifyFailure(error.localizedDescription)

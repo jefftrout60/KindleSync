@@ -9,7 +9,8 @@ struct KindleAPIClient {
 
     static func fetchBooks(
         cookies: [HTTPCookie],
-        token: String? = nil
+        token: String? = nil,
+        session: URLSession = .shared
     ) async throws -> BookListResponse {
         var components = URLComponents(string: baseURL)!
         var queryItems: [URLQueryItem] = [
@@ -21,7 +22,7 @@ struct KindleAPIClient {
         components.queryItems = queryItems
 
         let request = makeRequest(url: components.url!, cookies: cookies)
-        return try await perform(request: request, as: BookListResponse.self)
+        return try await perform(request: request, as: BookListResponse.self, session: session)
     }
 
     // MARK: - Fetch Highlights (paginated page)
@@ -29,7 +30,8 @@ struct KindleAPIClient {
     static func fetchHighlights(
         asin: String,
         cookies: [HTTPCookie],
-        token: String? = nil
+        token: String? = nil,
+        session: URLSession = .shared
     ) async throws -> HighlightListResponse {
         var components = URLComponents(string: baseURL)!
         var queryItems: [URLQueryItem] = [
@@ -41,7 +43,7 @@ struct KindleAPIClient {
         components.queryItems = queryItems
 
         let request = makeRequest(url: components.url!, cookies: cookies)
-        return try await perform(request: request, as: HighlightListResponse.self)
+        return try await perform(request: request, as: HighlightListResponse.self, session: session)
     }
 
     // MARK: - Private Helpers
@@ -61,11 +63,12 @@ struct KindleAPIClient {
 
     private static func perform<T: Decodable>(
         request: URLRequest,
-        as type: T.Type
+        as type: T.Type,
+        session: URLSession
     ) async throws -> T {
         let (data, response): (Data, URLResponse)
         do {
-            (data, response) = try await URLSession.shared.data(for: request)
+            (data, response) = try await session.data(for: request)
         } catch {
             throw SyncError.networkError(error)
         }
