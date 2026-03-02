@@ -13,7 +13,10 @@ struct KindleSyncApp: App {
         MenuBarExtra("Kindle Sync", systemImage: "book.closed") {
             MenuBarContentView()
                 .environmentObject(syncManager)
-                .onAppear { syncManager.checkAndSchedule() }
+                .task {
+                    await NotificationManager.requestPermission()
+                    syncManager.checkAndSchedule()
+                }
         }
         .menuBarExtraStyle(.window)
 

@@ -29,13 +29,35 @@ final class SyncManager: ObservableObject {
         } else {
             isAuthenticated = false
         }
+        startScheduler()
+    }
+
+    private func startScheduler() {
+        Task {
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 3_600_000_000_000) // 1 hour
+                checkAndSchedule()
+            }
+        }
     }
 
     func handleLoginSuccess(_ cookies: [HTTPCookie]) {
-        try? CookieKeychainStore.save(cookies)
+        do {
+            try CookieKeychainStore.save(cookies)
+        } catch {
+            print("[KindleSync] Warning: Keychain save failed — \(error.localizedDescription). Session will work this run but won't persist after restart.")
+        }
         storedCookies = cookies
         isAuthenticated = true
         checkAndSchedule()
+    }
+
+    func logOut() {
+        CookieKeychainStore.delete()
+        storedCookies = []
+        isAuthenticated = false
+        status = .idle
+        clearSyncHistory()
     }
 
     func sync() async {
