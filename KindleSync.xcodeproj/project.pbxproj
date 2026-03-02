@@ -10,6 +10,8 @@
 		AA000011 /* KindleSyncApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000010 /* KindleSyncApp.swift */; };
 		AA000013 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA000012 /* Assets.xcassets */; };
 		AA000018 /* KindleSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000017 /* KindleSyncTests.swift */; };
+		AA000027 /* MenuBarContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000026 /* MenuBarContentView.swift */; };
+		AA000029 /* SyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000028 /* SyncManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -20,6 +22,8 @@
 		AA000015 /* KindleSync.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = KindleSync.entitlements; sourceTree = "<group>"; };
 		AA000016 /* KindleSyncTests */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KindleSyncTests; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA000017 /* KindleSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KindleSyncTests.swift; sourceTree = "<group>"; };
+		AA000026 /* MenuBarContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarContentView.swift; sourceTree = "<group>"; };
+		AA000028 /* SyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -69,6 +73,7 @@
 			isa = PBXGroup;
 			children = (
 				AA000010 /* KindleSyncApp.swift */,
+				AA000028 /* SyncManager.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -97,6 +102,7 @@
 		AA000024 /* UI */ = {
 			isa = PBXGroup;
 			children = (
+				AA000026 /* MenuBarContentView.swift */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -216,6 +222,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				AA000011 /* KindleSyncApp.swift in Sources */,
+				AA000027 /* MenuBarContentView.swift in Sources */,
+				AA000029 /* SyncManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
