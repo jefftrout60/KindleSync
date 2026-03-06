@@ -3,11 +3,9 @@ import Foundation
 // MARK: - Sync State (top-level persisted structure)
 
 struct SyncState: Codable {
-    var lastFullSyncAt: Int64?
     var books: [String: StoredBook]  // keyed by ASIN
 
     init() {
-        self.lastFullSyncAt = nil
         self.books = [:]
     }
 }

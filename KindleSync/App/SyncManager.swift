@@ -1,7 +1,6 @@
 import SwiftUI
 import Foundation
 import WebKit
-import UserNotifications
 
 enum SyncStatus: Equatable {
     case idle
@@ -16,16 +15,12 @@ final class SyncManager: ObservableObject {
     @Published var status: SyncStatus = .idle
     @Published var isAuthenticated: Bool = false
 
-    private(set) var storedCookies: [HTTPCookie] = []
-
     private let engine = KindleSyncEngine()
     private let webFetcher = KindleWebFetcher()
-    private let lastSyncKey = "lastSyncDate"
 
     init() {
         if let cookies = try? CookieKeychainStore.load(),
            !CookieKeychainStore.areCookiesExpired(cookies) {
-            storedCookies = cookies
             isAuthenticated = true
         } else {
             isAuthenticated = false
@@ -38,7 +33,6 @@ final class SyncManager: ObservableObject {
         } catch {
             print("[KindleSync] Warning: Keychain save failed — \(error.localizedDescription). Session will work this run but won't persist after restart.")
         }
-        storedCookies = cookies
         isAuthenticated = true
     }
 
@@ -69,10 +63,8 @@ final class SyncManager: ObservableObject {
                 }
             }
         }
-        storedCookies = []
         isAuthenticated = false
         status = .idle
-        clearSyncHistory()
     }
 
     func sync() async {
@@ -81,7 +73,6 @@ final class SyncManager: ObservableObject {
         do {
             let result = try await engine.sync(fetcher: webFetcher)
             status = .success(result.completedAt)
-            markSyncComplete()
         } catch SyncError.sessionExpired {
             status = .needsAuth
             isAuthenticated = false
@@ -93,17 +84,5 @@ final class SyncManager: ObservableObject {
             status = .failed(error.localizedDescription)
             NotificationManager.notifyFailure(error.localizedDescription)
         }
-    }
-
-    func markSyncComplete() {
-        UserDefaults.standard.set(Date(), forKey: lastSyncKey)
-    }
-
-    func clearSyncHistory() {
-        UserDefaults.standard.removeObject(forKey: lastSyncKey)
-    }
-
-    var lastSyncDate: Date? {
-        UserDefaults.standard.object(forKey: lastSyncKey) as? Date
     }
 }

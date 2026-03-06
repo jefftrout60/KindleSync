@@ -36,15 +36,15 @@ final class NoteFormatterTests: XCTestCase {
 
         XCTAssertTrue(html.contains("<h2>Test Book</h2>"), "Title should appear in h2 tag")
         XCTAssertTrue(html.contains("<p>Test Author</p>"), "Author should appear in p tag")
-        XCTAssertTrue(html.contains("📝"), "Note indicator should appear when note is non-nil")
+        XCTAssertTrue(html.contains("Jeff's Note:"), "Note label should appear when note is non-nil")
 
-        // Verify sort order: Location 100 must appear before Location 200
+        // Verify sort order by location string: "Location 100" must appear before "Location 200"
         let pos100 = html.range(of: "Location 100")
         let pos200 = html.range(of: "Location 200")
         XCTAssertNotNil(pos100, "Location 100 should be present")
         XCTAssertNotNil(pos200, "Location 200 should be present")
         if let r100 = pos100, let r200 = pos200 {
-            XCTAssertLessThan(r100.lowerBound, r200.lowerBound, "Lower startPosition should appear first")
+            XCTAssertLessThan(r100.lowerBound, r200.lowerBound, "Lower location number should appear first (sorted by locationNumber(), not startPosition)")
         }
     }
 
@@ -67,7 +67,7 @@ final class NoteFormatterTests: XCTestCase {
 
         let html = NoteFormatter.buildHTML(book: book)
 
-        XCTAssertFalse(html.contains("📝"), "Note indicator must not appear when note is nil")
+        XCTAssertFalse(html.contains("Jeff's Note:"), "Note label must not appear when note is nil")
     }
 }
 

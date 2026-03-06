@@ -105,7 +105,6 @@ final class SyncStateStore {
             }
         }
 
-        updatedState.lastFullSyncAt = Int64(Date().timeIntervalSince1970 * 1000)
         return (updatedState, addedByASIN)
     }
 }

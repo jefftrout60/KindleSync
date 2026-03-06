@@ -64,7 +64,7 @@ struct MenuBarContentView: View {
                     .foregroundStyle(.secondary)
             }
         case .success(let date):
-            Text("Last synced: \(relativeTime(date))")
+            Text("Last synced: \(formattedTime(date))")
                 .font(.caption)
                 .foregroundStyle(.green)
         case .failed(let message):
@@ -86,9 +86,10 @@ struct MenuBarContentView: View {
 
     // MARK: - Helpers
 
-    private func relativeTime(_ date: Date) -> String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.dateTimeStyle = .named
-        return formatter.localizedString(for: date, relativeTo: Date())
+    private func formattedTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .none
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
     }
 }

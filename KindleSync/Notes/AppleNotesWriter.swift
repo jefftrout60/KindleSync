@@ -55,8 +55,10 @@ struct AppleNotesWriter {
                 make new folder with properties {name:"Kindle Highlights"}
             end if
             set targetFolder to folder "Kindle Highlights"
-            set matchingNotes to (notes in targetFolder whose name is noteName)
-            if length of matchingNotes > 0 then
+            -- Search all notes (not just the folder) so we find the note regardless
+            -- of which account's folder it landed in on first creation.
+            set matchingNotes to (every note whose name is noteName)
+            if (count of matchingNotes) > 0 then
                 set body of (item 1 of matchingNotes) to noteContent
             else
                 make new note at targetFolder with properties {name:noteName, body:noteContent}

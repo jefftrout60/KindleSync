@@ -19,9 +19,5 @@ struct KindleSyncApp: App {
         }
         .menuBarExtraStyle(.window)
 
-        Settings {
-            Text("Kindle Sync Settings")
-                .padding()
-        }
     }
 }

@@ -89,8 +89,7 @@ final class CookieKeychainStore {
                 "value":    cookie.value,
                 "domain":   cookie.domain,
                 "path":     cookie.path,
-                "secure":   cookie.isSecure,
-                "httpOnly": cookie.isHTTPOnly
+                "secure":   cookie.isSecure
             ]
             if let exp = cookie.expiresDate {
                 d["expires"] = exp.timeIntervalSince1970
