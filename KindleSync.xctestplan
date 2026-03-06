@@ -12,7 +12,13 @@
 
   },
   "testTargets" : [
-
+    {
+      "target" : {
+        "containerPath" : "container:KindleSync.xcodeproj",
+        "identifier" : "AA000019",
+        "name" : "KindleSyncTests"
+      }
+    }
   ],
   "version" : 1
 }
