@@ -132,6 +132,52 @@ final class SyncStateStoreTests: XCTestCase {
         XCTAssertNil(secondResult.addedByASIN[testASIN], "Duplicate highlight should not appear as added")
         XCTAssertEqual(secondResult.updated.books[testASIN]?.highlights.count, 1, "Highlight count should remain 1 after deduplication")
     }
+
+    func testMerge_existingBookWithNewHighlight_appendsAndReturnsInAdded() {
+        let book = makeKindleBook()
+        let highlightH1 = makeKindleHighlight(id: "h1")
+        let highlightH2 = makeKindleHighlight(id: "h2")
+
+        // First merge: new book with one highlight (h1)
+        let firstResult = SyncStateStore.merge(
+            existing: SyncState(),
+            newBooks: [book],
+            newHighlightsByASIN: [testASIN: [highlightH1]]
+        )
+
+        // Second merge: same book, now with both h1 (existing) and h2 (new)
+        let secondResult = SyncStateStore.merge(
+            existing: firstResult.updated,
+            newBooks: [book],
+            newHighlightsByASIN: [testASIN: [highlightH1, highlightH2]]
+        )
+
+        XCTAssertEqual(secondResult.addedByASIN[testASIN]?.count, 1, "Only the new highlight (h2) should appear in addedByASIN")
+        XCTAssertEqual(secondResult.addedByASIN[testASIN]?.first?.id, "h2", "The newly added highlight id should be h2")
+        XCTAssertEqual(secondResult.updated.books[testASIN]?.highlights.count, 2, "Both h1 and h2 should be stored after second merge")
+    }
+
+    func testMerge_emptyLocationValue_fallsBackToLocationWithStartPosition() {
+        let book = makeKindleBook()
+        let highlight = KindleHighlight(
+            highlightId: "loc-fallback",
+            highlight: "Some text",
+            note: nil,
+            startPosition: 77,
+            timestamp: 1700000000000,
+            color: nil,
+            locationValue: ""
+        )
+
+        let result = SyncStateStore.merge(
+            existing: SyncState(),
+            newBooks: [book],
+            newHighlightsByASIN: [testASIN: [highlight]]
+        )
+
+        let storedHighlight = result.updated.books[testASIN]?.highlights.first
+        XCTAssertEqual(storedHighlight?.location, "Location 77", "Empty locationValue should fall back to 'Location <startPosition>'")
+    }
 }
 
 // MARK: - CookieKeychainStoreTests
@@ -177,6 +223,79 @@ final class CookieKeychainStoreTests: XCTestCase {
                 return
             }
         }
+    }
+
+    func testAreCookiesExpired_returnsFalse_whenSessionCookieHasFutureExpiry() {
+        let futureDate = Date().addingTimeInterval(7 * 24 * 3600)
+        let properties: [HTTPCookiePropertyKey: Any] = [
+            .name:    "session-token",
+            .value:   "valid-token",
+            .domain:  ".amazon.com",
+            .path:    "/",
+            .expires: futureDate
+        ]
+        guard let cookie = HTTPCookie(properties: properties) else {
+            XCTFail("Failed to create test cookie with future expiry")
+            return
+        }
+
+        let result = CookieKeychainStore.areCookiesExpired([cookie])
+
+        XCTAssertFalse(result, "Cookie with a future expiresDate should not be treated as expired")
+    }
+
+    func testAreCookiesExpired_returnsTrue_whenSessionCookieIsExpired() {
+        let pastDate = Date().addingTimeInterval(-3600)
+        let properties: [HTTPCookiePropertyKey: Any] = [
+            .name:    "session-token",
+            .value:   "old-token",
+            .domain:  ".amazon.com",
+            .path:    "/",
+            .expires: pastDate
+        ]
+        guard let cookie = HTTPCookie(properties: properties) else {
+            XCTFail("Failed to create test cookie with past expiry")
+            return
+        }
+
+        let result = CookieKeychainStore.areCookiesExpired([cookie])
+
+        XCTAssertTrue(result, "Cookie whose expiresDate is in the past should be treated as expired")
+    }
+
+    func testAreCookiesExpired_returnsTrue_whenNoSessionCookiesPresent() {
+        let properties: [HTTPCookiePropertyKey: Any] = [
+            .name:   "ubid-main",
+            .value:  "some-value",
+            .domain: ".amazon.com",
+            .path:   "/"
+        ]
+        guard let cookie = HTTPCookie(properties: properties) else {
+            XCTFail("Failed to create non-session test cookie")
+            return
+        }
+
+        let result = CookieKeychainStore.areCookiesExpired([cookie])
+
+        XCTAssertTrue(result, "No session-token or session-id cookies present should be treated as expired")
+    }
+
+    func testAreCookiesExpired_returnsFalse_whenSessionCookieHasNoExpiresDate() {
+        // Omit .expires — HTTPCookie will have a nil expiresDate
+        let properties: [HTTPCookiePropertyKey: Any] = [
+            .name:   "session-id",
+            .value:  "persistent-session",
+            .domain: ".amazon.com",
+            .path:   "/"
+        ]
+        guard let cookie = HTTPCookie(properties: properties) else {
+            XCTFail("Failed to create test cookie without expiry")
+            return
+        }
+
+        let result = CookieKeychainStore.areCookiesExpired([cookie])
+
+        XCTAssertFalse(result, "Session cookie with no expiresDate should not be treated as expired")
     }
 }
 
