@@ -64,7 +64,7 @@ final class SyncStateStore {
                     id: h.highlightId,
                     text: h.highlight,
                     note: h.note,
-                    location: h.location?.value ?? "Location \(h.startPosition)",
+                    location: h.locationValue.isEmpty ? "Location \(h.startPosition)" : h.locationValue,
                     startPosition: h.startPosition,
                     timestamp: h.timestamp,
                     color: h.color
@@ -84,7 +84,7 @@ final class SyncStateStore {
                         id: h.highlightId,
                         text: h.highlight,
                         note: h.note,
-                        location: h.location?.value ?? "Location \(h.startPosition)",
+                        location: h.locationValue.isEmpty ? "Location \(h.startPosition)" : h.locationValue,
                         startPosition: h.startPosition,
                         timestamp: h.timestamp,
                         color: h.color

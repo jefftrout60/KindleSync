@@ -31,7 +31,7 @@ struct StoredHighlight: Codable, Identifiable {
     let id: String          // = KindleHighlight.highlightId
     let text: String        // = KindleHighlight.highlight
     let note: String?       // = KindleHighlight.note
-    let location: String    // = KindleHighlight.location?.value ?? "Location \(startPosition)"
+    let location: String    // = KindleHighlight.locationValue (or "Location \(startPosition)" if empty)
     let startPosition: Int  // for sorting
     let timestamp: Int64    // epoch ms
     let color: String?      // yellow/blue/pink/orange

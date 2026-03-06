@@ -2,7 +2,7 @@ import Foundation
 
 struct NoteFormatter {
     static func buildHTML(book: StoredBook) -> String {
-        let sorted = book.highlights.sorted { $0.startPosition < $1.startPosition }
+        let sorted = book.highlights.sorted { locationNumber($0.location) < locationNumber($1.location) }
         let syncDate = formatDate(Date())
         let count = sorted.count
 
@@ -16,16 +16,18 @@ struct NoteFormatter {
 
         // Highlights
         for highlight in sorted {
-            parts.append("<h3>\(escape(highlight.location))</h3>")
+            let colorSuffix = highlight.color.map { " · \($0.capitalized)" } ?? ""
+            parts.append("<h3>\(escape(highlight.location))\(colorSuffix)</h3>")
             parts.append("<p>\"\(escape(highlight.text))\"</p>")
 
             if let note = highlight.note, !note.trimmingCharacters(in: .whitespaces).isEmpty {
-                parts.append("<p><i>📝 \(escape(note))</i></p>")
+                parts.append("<p><i>Jeff's Note: \(escape(note))</i></p>")
             }
 
-            let dateStr = formatDate(highlight.highlightDate)
-            let colorStr = highlight.color.map { " · \($0.capitalized)" } ?? ""
-            parts.append("<p><i>\(dateStr)\(colorStr)</i></p>")
+            if highlight.timestamp > 0 {
+                parts.append("<p><i>\(formatDate(highlight.highlightDate))</i></p>")
+            }
+
             parts.append("<br>")
         }
 
@@ -49,6 +51,17 @@ struct NoteFormatter {
 
     private static func formatDate(_ date: Date) -> String {
         dateFormatter.string(from: date)
+    }
+
+    // Extract the numeric position from a location string like "Location: 3,680" or "Page: 16"
+    private static func locationNumber(_ location: String) -> Int {
+        let stripped = location.replacingOccurrences(of: ",", with: "")
+        var digits = ""
+        for c in stripped {
+            if c.isNumber { digits.append(c) }
+            else if !digits.isEmpty { break }
+        }
+        return Int(digits) ?? 0
     }
 
     private static func escape(_ string: String) -> String {

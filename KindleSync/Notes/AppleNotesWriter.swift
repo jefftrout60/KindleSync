@@ -17,10 +17,18 @@ struct AppleNotesWriter {
     // MARK: - Public API
 
     static func upsert(noteTitle: String, htmlBody: String) async throws {
+        // Write HTML body to a temp file — env vars are limited in size and AppleScript's
+        // `system attribute` silently returns empty when the value is too large.
+        let bodyURL = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("html")
+        try htmlBody.write(to: bodyURL, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: bodyURL) }
+
         let script = upsertScript()
         try await runScript(script, env: [
-            "NOTE_TITLE": noteTitle,
-            "NOTE_BODY":  htmlBody
+            "NOTE_TITLE":      noteTitle,
+            "NOTE_BODY_PATH":  bodyURL.path
         ])
     }
 
@@ -39,7 +47,8 @@ struct AppleNotesWriter {
     private static func upsertScript() -> String {
         """
         set noteName to system attribute "NOTE_TITLE"
-        set noteContent to system attribute "NOTE_BODY"
+        set bodyPath to system attribute "NOTE_BODY_PATH"
+        set noteContent to read POSIX file bodyPath as «class utf8»
 
         tell application "Notes"
             if not (exists folder "Kindle Highlights") then

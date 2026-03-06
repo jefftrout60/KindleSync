@@ -1,5 +1,6 @@
 import SwiftUI
 import Foundation
+import WebKit
 import UserNotifications
 
 enum SyncStatus: Equatable {
@@ -18,8 +19,8 @@ final class SyncManager: ObservableObject {
     private(set) var storedCookies: [HTTPCookie] = []
 
     private let engine = KindleSyncEngine()
+    private let webFetcher = KindleWebFetcher()
     private let lastSyncKey = "lastSyncDate"
-    private let syncIntervalSeconds: TimeInterval = 7 * 24 * 3600 // 7 days
 
     init() {
         if let cookies = try? CookieKeychainStore.load(),
@@ -28,16 +29,6 @@ final class SyncManager: ObservableObject {
             isAuthenticated = true
         } else {
             isAuthenticated = false
-        }
-        startScheduler()
-    }
-
-    private func startScheduler() {
-        Task {
-            while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 3_600_000_000_000) // 1 hour
-                checkAndSchedule()
-            }
         }
     }
 
@@ -49,11 +40,35 @@ final class SyncManager: ObservableObject {
         }
         storedCookies = cookies
         isAuthenticated = true
-        checkAndSchedule()
     }
 
     func logOut() {
         CookieKeychainStore.delete()
+        // Preserve long-lived cookies (e.g. Amazon device-trust set by "don't require a
+        // code on this browser") so 2FA isn't required after every explicit logout.
+        // Session cookies are cleared with the full data-store wipe below.
+        let store = WKWebsiteDataStore.default()
+        store.httpCookieStore.getAllCookies { trustCookies in
+            // Keep long-lived device-trust cookies but never keep session credentials.
+            // Amazon's session-token can have a multi-month expiry, so expiry alone
+            // is not enough to distinguish trust cookies from session cookies.
+            let sessionCookieNames: Set<String> = ["session-token", "session-id",
+                                                    "at-main", "at-acbus"]
+            let longLived = trustCookies.filter { cookie in
+                guard !sessionCookieNames.contains(cookie.name),
+                      let expires = cookie.expiresDate else { return false }
+                return expires.timeIntervalSinceNow > 30 * 24 * 3600 // > 30 days
+            }
+            store.removeData(
+                ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(),
+                modifiedSince: .distantPast
+            ) {
+                // Re-inject trust cookies after the wipe
+                for cookie in longLived {
+                    store.httpCookieStore.setCookie(cookie) { }
+                }
+            }
+        }
         storedCookies = []
         isAuthenticated = false
         status = .idle
@@ -64,7 +79,7 @@ final class SyncManager: ObservableObject {
         guard status != .syncing else { return }
         status = .syncing
         do {
-            let result = try await engine.sync(cookies: storedCookies)
+            let result = try await engine.sync(fetcher: webFetcher)
             status = .success(result.completedAt)
             markSyncComplete()
         } catch SyncError.sessionExpired {
@@ -78,22 +93,6 @@ final class SyncManager: ObservableObject {
             status = .failed(error.localizedDescription)
             NotificationManager.notifyFailure(error.localizedDescription)
         }
-    }
-
-    func checkAndSchedule() {
-        guard isAuthenticated else { return }
-        guard status != .syncing else { return }
-
-        if shouldSync() {
-            Task { await sync() }
-        }
-    }
-
-    private func shouldSync() -> Bool {
-        guard let lastSync = UserDefaults.standard.object(forKey: lastSyncKey) as? Date else {
-            return true // never synced
-        }
-        return Date().timeIntervalSince(lastSync) >= syncIntervalSeconds
     }
 
     func markSyncComplete() {

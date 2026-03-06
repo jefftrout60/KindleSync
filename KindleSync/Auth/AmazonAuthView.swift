@@ -29,12 +29,20 @@ struct AmazonAuthView: NSViewRepresentable {
             self.onLoginSuccess = onLoginSuccess
         }
 
-        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            guard let url = webView.url else { return }
-            guard url.host?.hasSuffix("amazon.com") == true,
-                  url.path == "/notebook" else { return }
-            guard !hasCalledBack else { return }
+        // Intercept the response to /notebook before the page body renders.
+        // Cancelling here prevents any flash of the notebook content.
+        func webView(_ webView: WKWebView,
+                     decidePolicyFor navigationResponse: WKNavigationResponse,
+                     decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
+            guard let url = navigationResponse.response.url,
+                  url.host?.hasSuffix("amazon.com") == true,
+                  url.path == "/notebook",
+                  !hasCalledBack else {
+                decisionHandler(.allow)
+                return
+            }
             hasCalledBack = true
+            decisionHandler(.cancel) // prevent the page from rendering
             extractCookies(from: webView)
         }
 
@@ -67,7 +75,7 @@ struct AmazonAuthView: NSViewRepresentable {
 
 struct AmazonAuthSheet: View {
     let onLoginSuccess: ([HTTPCookie]) -> Void
-    @Environment(\.dismiss) private var dismiss
+    @State private var loginSucceeded = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -79,9 +87,15 @@ struct AmazonAuthSheet: View {
             .padding()
             .background(.bar)
 
-            AmazonAuthView { cookies in
-                onLoginSuccess(cookies)
-                dismiss()
+            ZStack {
+                AmazonAuthView { cookies in
+                    loginSucceeded = true
+                    onLoginSuccess(cookies)
+                }
+                // Blank overlay hides the post-login notebook page flash
+                if loginSucceeded {
+                    Color(NSColor.windowBackgroundColor)
+                }
             }
         }
         .frame(width: 480, height: 640)

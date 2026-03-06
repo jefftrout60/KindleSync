@@ -3,45 +3,30 @@ import Foundation
 actor KindleSyncEngine {
     private var isSyncing = false
 
-    func sync(cookies: [HTTPCookie]) async throws -> SyncResult {
+    func sync(fetcher: KindleWebFetcher) async throws -> SyncResult {
         guard !isSyncing else { throw SyncError.alreadyInProgress }
         isSyncing = true
         defer { isSyncing = false }
 
-        // 1. Check Notes permission on first call
+        // 1. Check Notes permission
         let hasPermission = await AppleNotesWriter.ensureNotesPermission()
         guard hasPermission else {
             throw SyncError.permissionDenied("Apple Notes automation is not authorized.")
         }
 
-        // 2. Fetch all books (paginated)
-        var allBooks: [KindleBook] = []
-        var bookToken: String? = nil
-        repeat {
-            let page = try await KindleAPIClient.fetchBooks(cookies: cookies, token: bookToken)
-            allBooks.append(contentsOf: page.bookList)
-            bookToken = page.paginationToken
-        } while bookToken != nil
+        // 2. Fetch all books and highlights via WKWebView JS injection
+        let (fetchedBooks, highlightsByASIN) = try await fetcher.fetchAll()
+        let rawTotal = highlightsByASIN.values.reduce(0) { $0 + $1.count }
+        print("[KindleSync] Raw fetch: \(fetchedBooks.count) books, \(rawTotal) highlights")
 
-        // 3. Fetch highlights for each book (paginated, 0.5s delay between books)
-        var highlightsByASIN: [String: [KindleHighlight]] = [:]
-        for (index, book) in allBooks.enumerated() {
-            var bookHighlights: [KindleHighlight] = []
-            var hlToken: String? = nil
-            repeat {
-                let page = try await KindleAPIClient.fetchHighlights(asin: book.asin, cookies: cookies, token: hlToken)
-                bookHighlights.append(contentsOf: page.highlightList)
-                hlToken = page.paginationToken
-            } while hlToken != nil
-            highlightsByASIN[book.asin] = bookHighlights
-
-            // Rate limit: 0.5s between books (not between pages)
-            if index < allBooks.count - 1 {
-                try await Task.sleep(nanoseconds: 500_000_000)
-            }
+        // Skip books without a title — these are typically personal documents or PDFs
+        let allBooks = fetchedBooks.filter { !$0.title.isEmpty && !$0.asin.isEmpty }
+        let skipped = fetchedBooks.count - allBooks.count
+        if skipped > 0 {
+            print("[KindleSync] Skipped \(skipped) book(s) with no title or ASIN")
         }
 
-        // 4. Load existing state, diff, merge
+        // 3. Load existing state, diff, merge
         let existing = try SyncStateStore.load()
         let (updatedState, addedByASIN) = SyncStateStore.merge(
             existing: existing,
@@ -49,7 +34,9 @@ actor KindleSyncEngine {
             newHighlightsByASIN: highlightsByASIN
         )
 
-        // 5. Write Notes for books with new highlights
+        // 4. Write Notes for books with new highlights
+        let totalAdded = addedByASIN.values.reduce(0) { $0 + $1.count }
+        print("[KindleSync] New highlights to write: \(totalAdded) across \(addedByASIN.count) books")
         var totalNew = 0
         var notesFailureCount = 0
         for (asin, newHighlights) in addedByASIN where !newHighlights.isEmpty {
@@ -65,7 +52,7 @@ actor KindleSyncEngine {
             }
         }
 
-        // 6. Persist updated state (includes books that succeeded + those that failed Notes write)
+        // 5. Persist updated state (includes books that succeeded + those that failed Notes write)
         // State is saved regardless — failed Notes writes will get re-attempted on next full rebuild
         try SyncStateStore.save(updatedState)
 

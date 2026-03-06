@@ -1,29 +1,6 @@
 import XCTest
 @testable import KindleSync
 
-// MARK: - MockURLProtocol
-
-final class MockURLProtocol: URLProtocol {
-    static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
-
-    override class func canInit(with request: URLRequest) -> Bool { true }
-    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
-
-    override func startLoading() {
-        guard let handler = MockURLProtocol.requestHandler else { return }
-        do {
-            let (response, data) = try handler(request)
-            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-            client?.urlProtocol(self, didLoad: data)
-            client?.urlProtocolDidFinishLoading(self)
-        } catch {
-            client?.urlProtocol(self, didFailWithError: error)
-        }
-    }
-
-    override func stopLoading() {}
-}
-
 // MARK: - NoteFormatterTests
 
 final class NoteFormatterTests: XCTestCase {
@@ -101,13 +78,7 @@ final class SyncStateStoreTests: XCTestCase {
     private let testASIN = "B001TEST"
 
     private func makeKindleBook() -> KindleBook {
-        KindleBook(
-            asin: testASIN,
-            title: "Merge Test Book",
-            authors: "Merge Author",
-            numberOfHighlights: 1,
-            lastAccessedDate: nil
-        )
+        KindleBook(asin: testASIN, title: "Merge Test Book", authors: "Merge Author")
     }
 
     private func makeKindleHighlight(id: String = "highlight-1") -> KindleHighlight {
@@ -116,10 +87,9 @@ final class SyncStateStoreTests: XCTestCase {
             highlight: "Some highlighted text",
             note: nil,
             startPosition: 42,
-            endPosition: nil,
             timestamp: 1700000000000,
             color: nil,
-            location: HighlightLocation(url: nil, value: "Location 42")
+            locationValue: "Location 42"
         )
     }
 
@@ -210,59 +180,65 @@ final class CookieKeychainStoreTests: XCTestCase {
     }
 }
 
-// MARK: - KindleAPIClientTests
+// MARK: - SyncStateStorePersistenceTests
 
-final class KindleAPIClientTests: XCTestCase {
+final class SyncStateStorePersistenceTests: XCTestCase {
 
-    var session: URLSession!
+    private var stateFileURL: URL {
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        return appSupport.appendingPathComponent("Kindle Sync/sync_state.json")
+    }
 
     override func setUp() {
         super.setUp()
-        let config = URLSessionConfiguration.ephemeral
-        config.protocolClasses = [MockURLProtocol.self]
-        session = URLSession(configuration: config)
+        try? FileManager.default.removeItem(at: stateFileURL)
     }
 
     override func tearDown() {
-        MockURLProtocol.requestHandler = nil
-        session = nil
+        try? FileManager.default.removeItem(at: stateFileURL)
         super.tearDown()
     }
 
-    func testFetchBooks_happyPath_decodesResponse() async throws {
-        let json = """
-        {"bookList":[{"asin":"B001","title":"Test Book","authors":"Test Author","numberOfHighlights":1}],"paginationToken":null}
-        """.data(using: .utf8)!
-
-        MockURLProtocol.requestHandler = { request in
-            let url = request.url ?? URL(string: "https://read.amazon.com")!
-            let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
-            return (response, json)
-        }
-
-        let result = try await KindleAPIClient.fetchBooks(cookies: [], token: nil, session: session)
-
-        XCTAssertEqual(result.bookList.count, 1)
-        XCTAssertEqual(result.bookList.first?.asin, "B001")
-        XCTAssertEqual(result.bookList.first?.title, "Test Book")
-        XCTAssertEqual(result.bookList.first?.authors, "Test Author")
+    func testLoad_absentFile_returnsEmptySyncState() throws {
+        // File deleted in setUp — load() must return empty state without throwing
+        let state = try SyncStateStore.load()
+        XCTAssertTrue(state.books.isEmpty, "books should be empty on first run (no file present)")
     }
 
-    func testFetchBooks_sessionExpired_throwsSessionExpiredError() async throws {
-        MockURLProtocol.requestHandler = { _ in
-            let signinURL = URL(string: "https://www.amazon.com/ap/signin?openid=foo")!
-            let response = HTTPURLResponse(url: signinURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
-            let data = Data()
-            return (response, data)
-        }
+    func testSaveAndLoad_roundTrip_preservesHighlightFields() throws {
+        let highlight = StoredHighlight(
+            id: "h-roundtrip",
+            text: "Round trip text",
+            note: "Personal note",
+            location: "Location 123",
+            startPosition: 123,
+            timestamp: 1700000000000,
+            color: "yellow"
+        )
+        let book = StoredBook(
+            asin: "B999ROUND",
+            title: "Round Trip Book",
+            author: "Round Trip Author",
+            highlights: [highlight]
+        )
+        var state = SyncState()
+        state.books["B999ROUND"] = book
 
-        do {
-            _ = try await KindleAPIClient.fetchBooks(cookies: [], token: nil, session: session)
-            XCTFail("Expected SyncError.sessionExpired to be thrown")
-        } catch SyncError.sessionExpired {
-            // Expected
-        } catch {
-            XCTFail("Expected SyncError.sessionExpired, got \(error)")
-        }
+        try SyncStateStore.save(state)
+        let loaded = try SyncStateStore.load()
+
+        let loadedBook = try XCTUnwrap(loaded.books["B999ROUND"])
+        XCTAssertEqual(loadedBook.asin, "B999ROUND")
+        XCTAssertEqual(loadedBook.title, "Round Trip Book")
+        XCTAssertEqual(loadedBook.author, "Round Trip Author")
+
+        let loadedHighlight = try XCTUnwrap(loadedBook.highlights.first)
+        XCTAssertEqual(loadedHighlight.id, "h-roundtrip")
+        XCTAssertEqual(loadedHighlight.text, "Round trip text")
+        XCTAssertEqual(loadedHighlight.note, "Personal note")
+        XCTAssertEqual(loadedHighlight.location, "Location 123")
+        XCTAssertEqual(loadedHighlight.startPosition, 123)
+        XCTAssertEqual(loadedHighlight.timestamp, 1700000000000)
+        XCTAssertEqual(loadedHighlight.color, "yellow")
     }
 }
