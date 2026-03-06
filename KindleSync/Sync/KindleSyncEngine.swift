@@ -28,7 +28,7 @@ actor KindleSyncEngine {
 
         // 3. Load existing state, diff, merge
         let existing = try SyncStateStore.load()
-        let (updatedState, addedByASIN) = SyncStateStore.merge(
+        var (updatedState, addedByASIN) = SyncStateStore.merge(
             existing: existing,
             newBooks: allBooks,
             newHighlightsByASIN: highlightsByASIN
@@ -38,7 +38,7 @@ actor KindleSyncEngine {
         let totalAdded = addedByASIN.values.reduce(0) { $0 + $1.count }
         print("[KindleSync] New highlights to write: \(totalAdded) across \(addedByASIN.count) books")
         var totalNew = 0
-        var notesFailureCount = 0
+        var failedASINs: Set<String> = []
         for (asin, newHighlights) in addedByASIN where !newHighlights.isEmpty {
             guard let storedBook = updatedState.books[asin] else { continue }
             let html = NoteFormatter.buildHTML(book: storedBook)
@@ -47,18 +47,22 @@ actor KindleSyncEngine {
                 try await AppleNotesWriter.upsert(noteTitle: title, htmlBody: html)
                 totalNew += newHighlights.count
             } catch {
-                notesFailureCount += 1
+                failedASINs.insert(asin)
                 print("[KindleSync] Notes write failed for '\(title)': \(error.localizedDescription)")
             }
         }
 
-        // 5. Persist updated state (includes books that succeeded + those that failed Notes write)
-        // State is saved regardless — failed Notes writes will get re-attempted on next full rebuild
+        // 5. Revert failed books to pre-merge state so their highlights are retried next sync.
+        // Without this, merge() would see them as already stored and never include them in
+        // addedByASIN again — highlights would be silently lost.
+        for asin in failedASINs {
+            updatedState.books[asin] = existing.books[asin] // nil for new books = removed from state
+        }
         try SyncStateStore.save(updatedState)
 
         // Surface aggregate Notes failure after state is saved
-        if notesFailureCount > 0 {
-            throw SyncError.notesError("\(notesFailureCount) book(s) failed to write to Apple Notes.")
+        if !failedASINs.isEmpty {
+            throw SyncError.notesError("\(failedASINs.count) book(s) failed to write to Apple Notes.")
         }
 
         return SyncResult(

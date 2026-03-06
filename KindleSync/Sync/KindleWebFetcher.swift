@@ -87,12 +87,19 @@ final class KindleWebFetcher: NSObject {
 extension KindleWebFetcher: WKNavigationDelegate {
     nonisolated func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         Task { @MainActor in
-            if let url = webView.url, url.absoluteString.contains("ap/signin") {
+            guard let url = webView.url else { return }
+            let urlString = url.absoluteString
+            // Amazon redirects through several intermediate pages before landing on /notebook.
+            // Only resume once we've reached the final destination to avoid running JS injection
+            // on an intermediate page. Auth pages (ap/signin, ap/mfa, ap/cvf) mean session expired.
+            if urlString.contains("/ap/signin") || urlString.contains("/ap/mfa") || urlString.contains("/ap/cvf") {
                 self.loadContinuation?.resume(throwing: SyncError.sessionExpired)
-            } else {
+                self.loadContinuation = nil
+            } else if urlString.contains("read.amazon.com/notebook") {
                 self.loadContinuation?.resume()
+                self.loadContinuation = nil
             }
-            self.loadContinuation = nil
+            // Intermediate redirect — ignore and wait for final destination
         }
     }
 
