@@ -38,6 +38,19 @@ enum SyncInterval: String, CaseIterable, Identifiable {
 final class SyncManager: ObservableObject {
     @Published var status: SyncStatus = .idle
     @Published var isAuthenticated: Bool = false
+    @Published var scheduleInterval: SyncInterval? = nil
+    @Published var nextScheduledSync: Date? = nil
+    private var scheduledTimer: Timer? = nil
+
+    private enum DefaultsKey {
+        static let interval = "syncInterval"
+        static let nextFire = "nextScheduledSync"
+    }
+
+    var lastSyncDate: Date? {
+        if case .success(let date) = status { return date }
+        return nil
+    }
 
     private let engine = KindleSyncEngine()
     private let webFetcher = KindleWebFetcher()
@@ -107,6 +120,39 @@ final class SyncManager: ObservableObject {
         } catch {
             status = .failed(error.localizedDescription)
             NotificationManager.notifyFailure(error.localizedDescription)
+        }
+    }
+
+    func setSchedule(_ interval: SyncInterval?) {
+        scheduledTimer?.invalidate()
+        scheduledTimer = nil
+        scheduleInterval = interval
+        guard let interval else {
+            nextScheduledSync = nil
+            UserDefaults.standard.removeObject(forKey: DefaultsKey.interval)
+            UserDefaults.standard.removeObject(forKey: DefaultsKey.nextFire)
+            NotificationManager.notifyScheduleCancelled()
+            return
+        }
+        let base = lastSyncDate ?? Date()
+        let next = base.addingTimeInterval(interval.seconds)
+        armTimer(for: next, interval: interval)
+        NotificationManager.notifyScheduleSet(interval: interval, nextDate: next)
+    }
+
+    private func armTimer(for date: Date, interval: SyncInterval) {
+        nextScheduledSync = date
+        UserDefaults.standard.set(interval.rawValue, forKey: DefaultsKey.interval)
+        UserDefaults.standard.set(date.timeIntervalSince1970, forKey: DefaultsKey.nextFire)
+        let delay = max(0, date.timeIntervalSinceNow)
+        scheduledTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                await self.sync()
+                if let current = self.scheduleInterval {
+                    self.armTimer(for: Date().addingTimeInterval(current.seconds), interval: current)
+                }
+            }
         }
     }
 }
