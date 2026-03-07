@@ -76,6 +76,7 @@ final class SyncStateStore {
                 storedBook.highlights.append(contentsOf: storedNew)
                 storedBook.title = book.title   // update in case title changed
                 storedBook.author = book.authors
+                storedBook.coverImageURL = book.coverImageURL ?? storedBook.coverImageURL
                 updatedState.books[asin] = storedBook
             } else {
                 // New book — store all fetched highlights
@@ -94,7 +95,8 @@ final class SyncStateStore {
                     asin: asin,
                     title: book.title,
                     author: book.authors,
-                    highlights: allStored
+                    highlights: allStored,
+                    coverImageURL: book.coverImageURL
                 )
                 addedByASIN[asin] = allStored
                 continue
