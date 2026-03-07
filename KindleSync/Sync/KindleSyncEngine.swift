@@ -3,6 +3,12 @@ import Foundation
 actor KindleSyncEngine {
     private var isSyncing = false
 
+    private func fetchCoverImageBase64(url: String) async -> String? {
+        guard !url.isEmpty, let imageURL = URL(string: url) else { return nil }
+        guard let (data, _) = try? await URLSession.shared.data(from: imageURL) else { return nil }
+        return "data:image/jpeg;base64," + data.base64EncodedString()
+    }
+
     func sync(fetcher: KindleWebFetcher) async throws -> SyncResult {
         guard !isSyncing else { throw SyncError.alreadyInProgress }
         isSyncing = true
