@@ -74,6 +74,35 @@ actor KindleSyncEngine {
         for asin in failedASINs {
             updatedState.books[asin] = existing.books[asin] // nil for new books = removed from state
         }
+
+        // 5b. Migration pass: rewrite all pre-v1.1 notes with cover images (runs once)
+        if existing.schemaVersion < 2 {
+            print("[KindleSync] Running v1.1 cover image migration…")
+            for (asin, storedBook) in updatedState.books
+            where addedByASIN[asin] == nil && !failedASINs.contains(asin) {
+                let coverBase64: String?
+                if let url = storedBook.coverImageURL, !url.isEmpty {
+                    coverBase64 = await fetchCoverImageBase64(url: url)
+                } else {
+                    coverBase64 = nil
+                }
+                let html = NoteFormatter.buildHTML(book: storedBook, coverImageBase64: coverBase64)
+                let title = NoteFormatter.noteTitle(for: storedBook)
+                do {
+                    try await AppleNotesWriter.upsert(noteTitle: title, htmlBody: html)
+                    // Mark cover image confirmed
+                    if storedBook.coverImageURL != nil && coverBase64 == nil {
+                        updatedState.books[asin]?.coverImageURL = ""
+                    }
+                } catch {
+                    // Best-effort: individual migration failures don't fail the whole sync
+                    print("[KindleSync] Migration write failed for '\(title)': \(error.localizedDescription)")
+                }
+            }
+            updatedState.schemaVersion = 2
+            print("[KindleSync] Migration complete")
+        }
+
         try SyncStateStore.save(updatedState)
 
         // Surface aggregate Notes failure after state is saved
