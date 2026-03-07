@@ -10,6 +10,30 @@ enum SyncStatus: Equatable {
     case needsAuth
 }
 
+enum SyncInterval: String, CaseIterable, Identifiable {
+    case weekly
+    case biweekly
+    case monthly
+
+    var id: String { rawValue }
+
+    var seconds: TimeInterval {
+        switch self {
+        case .weekly:   return 1 * 7 * 24 * 3600
+        case .biweekly: return 2 * 7 * 24 * 3600
+        case .monthly:  return 4 * 7 * 24 * 3600
+        }
+    }
+
+    var displayName: String {
+        switch self {
+        case .weekly:   return "Weekly"
+        case .biweekly: return "Bi-weekly"
+        case .monthly:  return "Monthly"
+        }
+    }
+}
+
 @MainActor
 final class SyncManager: ObservableObject {
     @Published var status: SyncStatus = .idle
