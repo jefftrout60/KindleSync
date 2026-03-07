@@ -38,4 +38,25 @@ struct NotificationManager {
             identifier: "com.jeff.kindlesync.needsAuth"
         )
     }
+
+    // Convenience: schedule set notification
+    static func notifyScheduleSet(interval: SyncInterval, nextDate: Date) {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        notify(
+            title: "Kindle Sync scheduled",
+            body: "\(interval.displayName) sync enabled. Next: \(formatter.string(from: nextDate))",
+            identifier: "com.jeff.kindlesync.scheduleSet"
+        )
+    }
+
+    // Convenience: schedule cancelled notification
+    static func notifyScheduleCancelled() {
+        notify(
+            title: "Kindle Sync schedule cancelled",
+            body: "Auto-sync has been turned off.",
+            identifier: "com.jeff.kindlesync.scheduleCancelled"
+        )
+    }
 }
