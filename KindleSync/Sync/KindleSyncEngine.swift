@@ -47,11 +47,21 @@ actor KindleSyncEngine {
         var failedASINs: Set<String> = []
         for (asin, newHighlights) in addedByASIN where !newHighlights.isEmpty {
             guard let storedBook = updatedState.books[asin] else { continue }
-            let html = NoteFormatter.buildHTML(book: storedBook)
+            let coverBase64: String?
+            if let url = storedBook.coverImageURL, !url.isEmpty {
+                coverBase64 = await fetchCoverImageBase64(url: url)
+            } else {
+                coverBase64 = nil
+            }
+            let html = NoteFormatter.buildHTML(book: storedBook, coverImageBase64: coverBase64)
             let title = NoteFormatter.noteTitle(for: storedBook)
             do {
                 try await AppleNotesWriter.upsert(noteTitle: title, htmlBody: html)
                 totalNew += newHighlights.count
+                // Mark cover image status: "" if URL existed but download failed, URL preserved if succeeded
+                if storedBook.coverImageURL != nil && coverBase64 == nil {
+                    updatedState.books[asin]?.coverImageURL = ""
+                }
             } catch {
                 failedASINs.insert(asin)
                 print("[KindleSync] Notes write failed for '\(title)': \(error.localizedDescription)")
