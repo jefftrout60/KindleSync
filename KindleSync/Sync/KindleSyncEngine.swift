@@ -80,12 +80,9 @@ actor KindleSyncEngine {
             print("[KindleSync] Running v1.1 cover image migration…")
             for (asin, storedBook) in updatedState.books
             where addedByASIN[asin] == nil && !failedASINs.contains(asin) {
-                let coverBase64: String?
-                if let url = storedBook.coverImageURL, !url.isEmpty {
-                    coverBase64 = await fetchCoverImageBase64(url: url)
-                } else {
-                    coverBase64 = nil
-                }
+                // Skip books with no cover URL — nothing new to add
+                guard let url = storedBook.coverImageURL, !url.isEmpty else { continue }
+                let coverBase64 = await fetchCoverImageBase64(url: url)
                 let html = NoteFormatter.buildHTML(book: storedBook, coverImageBase64: coverBase64)
                 let title = NoteFormatter.noteTitle(for: storedBook)
                 do {
