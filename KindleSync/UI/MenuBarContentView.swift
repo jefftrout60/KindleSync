@@ -2,6 +2,8 @@ import SwiftUI
 
 struct MenuBarContentView: View {
     @EnvironmentObject var syncManager: SyncManager
+    @State private var selectedInterval: SyncInterval? = nil
+    @State private var previousInterval: SyncInterval? = nil
 
     var body: some View {
         if syncManager.isAuthenticated {
@@ -42,6 +44,36 @@ struct MenuBarContentView: View {
             }
             .foregroundStyle(.red)
             .buttonStyle(.plain)
+
+            Divider()
+
+            // Schedule picker
+            Picker("Auto-Sync", selection: $selectedInterval) {
+                Text("Off").tag(SyncInterval?.none)
+                ForEach(SyncInterval.allCases) { interval in
+                    Text(interval.displayName).tag(SyncInterval?.some(interval))
+                }
+            }
+            .pickerStyle(.radioGroup)
+            .onAppear {
+                selectedInterval = syncManager.scheduleInterval
+                previousInterval = syncManager.scheduleInterval
+            }
+            .onChange(of: selectedInterval) { newValue in
+                guard newValue != syncManager.scheduleInterval else { return }
+                // Only notify when newly enabling (nil → non-nil) or disabling (non-nil → nil)
+                // Switching between intervals is a silent update (REQ-004)
+                let notify = previousInterval == nil || newValue == nil
+                previousInterval = newValue
+                syncManager.setSchedule(newValue, notify: notify)
+            }
+
+            // Next scheduled sync display
+            if let nextSync = syncManager.nextScheduledSync {
+                Text("Next: \(formattedNextSync(nextSync))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding()
         .frame(width: 220)
@@ -89,6 +121,13 @@ struct MenuBarContentView: View {
     private func formattedTime(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .none
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+
+    private func formattedNextSync(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
         formatter.timeStyle = .short
         return formatter.string(from: date)
     }

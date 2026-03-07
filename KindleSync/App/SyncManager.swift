@@ -62,6 +62,17 @@ final class SyncManager: ObservableObject {
         } else {
             isAuthenticated = false
         }
+
+        // Restore schedule persisted across quit/relaunch
+        if let raw = UserDefaults.standard.string(forKey: DefaultsKey.interval),
+           let interval = SyncInterval(rawValue: raw) {
+            let nextFireTimestamp = UserDefaults.standard.double(forKey: DefaultsKey.nextFire)
+            if nextFireTimestamp != 0 {
+                scheduleInterval = interval
+                let nextFireDate = Date(timeIntervalSince1970: nextFireTimestamp)
+                armTimer(for: nextFireDate, interval: interval)
+            }
+        }
     }
 
     func handleLoginSuccess(_ cookies: [HTTPCookie]) {
@@ -110,6 +121,10 @@ final class SyncManager: ObservableObject {
         do {
             let result = try await engine.sync(fetcher: webFetcher)
             status = .success(result.completedAt)
+            // Re-arm the schedule timer from the completion time
+            if let current = scheduleInterval {
+                armTimer(for: Date().addingTimeInterval(current.seconds), interval: current)
+            }
         } catch SyncError.sessionExpired {
             status = .needsAuth
             isAuthenticated = false
@@ -123,7 +138,7 @@ final class SyncManager: ObservableObject {
         }
     }
 
-    func setSchedule(_ interval: SyncInterval?) {
+    func setSchedule(_ interval: SyncInterval?, notify: Bool = true) {
         scheduledTimer?.invalidate()
         scheduledTimer = nil
         scheduleInterval = interval
@@ -131,13 +146,13 @@ final class SyncManager: ObservableObject {
             nextScheduledSync = nil
             UserDefaults.standard.removeObject(forKey: DefaultsKey.interval)
             UserDefaults.standard.removeObject(forKey: DefaultsKey.nextFire)
-            NotificationManager.notifyScheduleCancelled()
+            if notify { NotificationManager.notifyScheduleCancelled() }
             return
         }
         let base = lastSyncDate ?? Date()
         let next = base.addingTimeInterval(interval.seconds)
         armTimer(for: next, interval: interval)
-        NotificationManager.notifyScheduleSet(interval: interval, nextDate: next)
+        if notify { NotificationManager.notifyScheduleSet(interval: interval, nextDate: next) }
     }
 
     private func armTimer(for date: Date, interval: SyncInterval) {
@@ -149,9 +164,6 @@ final class SyncManager: ObservableObject {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 await self.sync()
-                if let current = self.scheduleInterval {
-                    self.armTimer(for: Date().addingTimeInterval(current.seconds), interval: current)
-                }
             }
         }
     }
