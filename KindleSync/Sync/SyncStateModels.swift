@@ -4,9 +4,11 @@ import Foundation
 
 struct SyncState: Codable {
     var books: [String: StoredBook]  // keyed by ASIN
+    var schemaVersion: Int = 0       // 0 = pre-v1.1 (needs migration); 2 = migrated
 
     init() {
         self.books = [:]
+        self.schemaVersion = 0
     }
 }
 
@@ -17,6 +19,7 @@ struct StoredBook: Codable {
     var title: String
     var author: String
     var highlights: [StoredHighlight]
+    var coverImageURL: String?   // nil = not yet fetched, "" = fetched but no image, "https://..." = valid URL
 
     var highlightIds: Set<String> {
         Set(highlights.map(\.id))
