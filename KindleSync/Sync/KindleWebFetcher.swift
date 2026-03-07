@@ -11,6 +11,7 @@ final class KindleWebFetcher: NSObject {
             let asin: String
             let title: String
             let authors: String
+            let coverImageURL: String?
         }
         struct JSHighlight: Decodable {
             let id: String
@@ -65,7 +66,7 @@ final class KindleWebFetcher: NSObject {
         }
 
         let books = jsResult.books.map {
-            KindleBook(asin: $0.asin, title: $0.title, authors: $0.authors)
+            KindleBook(asin: $0.asin, title: $0.title, authors: $0.authors, coverImageURL: $0.coverImageURL)
         }
         let highlightsByASIN = jsResult.highlightsByASIN.mapValues { jsHighlights in
             jsHighlights.map { jh in
@@ -221,7 +222,10 @@ return {
     books: bks.map(b => ({
         asin: b.asin || '',
         title: b.title || '',
-        authors: Array.isArray(b.authors) ? b.authors.join(', ') : (b.authors || '')
+        authors: Array.isArray(b.authors) ? b.authors.join(', ') : (b.authors || ''),
+        coverImageURL: b.productUrl
+            ? b.productUrl.replace(/\\._[A-Z0-9,]+_\\.jpg$/, '.jpg')
+            : null
     })),
     highlightsByASIN: h
 };
