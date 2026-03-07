@@ -6,6 +6,7 @@ struct KindleBook: Identifiable {
     let asin: String
     let title: String
     let authors: String
+    var coverImageURL: String?
     var id: String { asin }
 }
 
