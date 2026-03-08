@@ -1,7 +1,7 @@
 import Foundation
 
 struct NoteFormatter {
-    static func buildHTML(book: StoredBook, coverImageBase64: String? = nil) -> String {
+    static func buildHTML(book: StoredBook) -> String {
         let sorted = book.highlights.sorted { locationNumber($0.location) < locationNumber($1.location) }
         let syncDate = formatDate(Date())
         let count = sorted.count
@@ -12,9 +12,6 @@ struct NoteFormatter {
         parts.append("<h2>\(escape(book.title))</h2>")
         parts.append("<p>\(escape(book.author))</p>")
         parts.append("<p><i>\(count) highlight\(count == 1 ? "" : "s") · Last synced: \(syncDate)</i></p>")
-        if let imgData = coverImageBase64, !imgData.isEmpty {
-            parts.append("<img src=\"\(imgData)\" style=\"max-width:150px;\"><br>")
-        }
         parts.append("<hr>")
 
         // Highlights
@@ -33,6 +30,9 @@ struct NoteFormatter {
 
             parts.append("<br>")
         }
+
+        // Padding so the cover image attachment clears the last highlight text
+        parts.append("<br><br><br><br><br>")
 
         return parts.joined(separator: "\n")
     }

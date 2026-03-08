@@ -16,7 +16,7 @@ struct AppleNotesWriter {
 
     // MARK: - Public API
 
-    static func upsert(noteTitle: String, htmlBody: String) async throws {
+    static func upsert(noteTitle: String, htmlBody: String, coverImagePath: URL? = nil) async throws {
         // Write HTML body to a temp file — env vars are limited in size and AppleScript's
         // `system attribute` silently returns empty when the value is too large.
         let bodyURL = URL(fileURLWithPath: NSTemporaryDirectory())
@@ -27,8 +27,9 @@ struct AppleNotesWriter {
 
         let script = upsertScript()
         try await runScript(script, env: [
-            "NOTE_TITLE":      noteTitle,
-            "NOTE_BODY_PATH":  bodyURL.path
+            "NOTE_TITLE":     noteTitle,
+            "NOTE_BODY_PATH": bodyURL.path,
+            "COVER_PATH":     coverImagePath?.path ?? ""
         ])
     }
 
@@ -48,6 +49,7 @@ struct AppleNotesWriter {
         """
         set noteName to system attribute "NOTE_TITLE"
         set bodyPath to system attribute "NOTE_BODY_PATH"
+        set coverPath to system attribute "COVER_PATH"
         set noteContent to read POSIX file bodyPath as «class utf8»
 
         tell application "Notes"
@@ -59,9 +61,25 @@ struct AppleNotesWriter {
             -- of which account's folder it landed in on first creation.
             set matchingNotes to (every note whose name is noteName)
             if (count of matchingNotes) > 0 then
-                set body of (item 1 of matchingNotes) to noteContent
+                try
+                    set body of (item 1 of matchingNotes) to noteContent
+                    set theNote to item 1 of matchingNotes
+                on error
+                    -- Can't modify found note (e.g., it's in Recently Deleted); create a new one
+                    set theNote to make new note at targetFolder with properties {name:noteName, body:noteContent}
+                end try
             else
-                make new note at targetFolder with properties {name:noteName, body:noteContent}
+                set theNote to make new note at targetFolder with properties {name:noteName, body:noteContent}
+            end if
+            -- Attach cover image via file reference. Notes reads the file directly;
+            -- no data passes through Apple Events so file size is not a concern.
+            -- Clear any stale attachments from previous syncs first so we never double-up.
+            if coverPath is not "" then
+                set existingAtts to (every attachment of theNote)
+                repeat with att in existingAtts
+                    delete att
+                end repeat
+                make new attachment with data (POSIX file coverPath) at theNote
             end if
         end tell
         """

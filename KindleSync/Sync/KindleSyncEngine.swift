@@ -3,10 +3,21 @@ import Foundation
 actor KindleSyncEngine {
     private var isSyncing = false
 
-    private func fetchCoverImageBase64(url: String) async -> String? {
+    // Downloads the cover image to a stable temp path (ks-cover-{asin}.jpg) and returns the URL.
+    // osascript (which runs this app's AppleScript) is unsandboxed and can read files from the
+    // temp directory. It passes raw image bytes via Apple Events to Notes — Notes never touches
+    // the filesystem directly. The temp file persists within a session; OS cleans up on logout.
+    private func fetchCoverImage(asin: String, url: String) async -> URL? {
         guard !url.isEmpty, let imageURL = URL(string: url) else { return nil }
+        let coverFile = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("ks-cover-\(asin)")
+            .appendingPathExtension("jpg")
+        if FileManager.default.fileExists(atPath: coverFile.path) {
+            return coverFile  // cached for this session
+        }
         guard let (data, _) = try? await URLSession.shared.data(from: imageURL) else { return nil }
-        return "data:image/jpeg;base64," + data.base64EncodedString()
+        guard (try? data.write(to: coverFile)) != nil else { return nil }
+        return coverFile
     }
 
     func sync(fetcher: KindleWebFetcher) async throws -> SyncResult {
@@ -47,21 +58,15 @@ actor KindleSyncEngine {
         var failedASINs: Set<String> = []
         for (asin, newHighlights) in addedByASIN where !newHighlights.isEmpty {
             guard let storedBook = updatedState.books[asin] else { continue }
-            let coverBase64: String?
-            if let url = storedBook.coverImageURL, !url.isEmpty {
-                coverBase64 = await fetchCoverImageBase64(url: url)
-            } else {
-                coverBase64 = nil
+            var coverFile: URL? = nil
+            if let urlString = storedBook.coverImageURL, !urlString.isEmpty {
+                coverFile = await fetchCoverImage(asin: asin, url: urlString)
             }
-            let html = NoteFormatter.buildHTML(book: storedBook, coverImageBase64: coverBase64)
+            let html = NoteFormatter.buildHTML(book: storedBook)
             let title = NoteFormatter.noteTitle(for: storedBook)
             do {
-                try await AppleNotesWriter.upsert(noteTitle: title, htmlBody: html)
+                try await AppleNotesWriter.upsert(noteTitle: title, htmlBody: html, coverImagePath: coverFile)
                 totalNew += newHighlights.count
-                // Mark cover image status: "" if URL existed but download failed, URL preserved if succeeded
-                if storedBook.coverImageURL != nil && coverBase64 == nil {
-                    updatedState.books[asin]?.coverImageURL = ""
-                }
             } catch {
                 failedASINs.insert(asin)
                 print("[KindleSync] Notes write failed for '\(title)': \(error.localizedDescription)")
@@ -75,29 +80,39 @@ actor KindleSyncEngine {
             updatedState.books[asin] = existing.books[asin] // nil for new books = removed from state
         }
 
-        // 5b. Migration pass: rewrite all pre-v1.1 notes with cover images (runs once)
-        if existing.schemaVersion < 2 {
-            print("[KindleSync] Running v1.1 cover image migration…")
+        // 5b. Migration pass: rewrite notes with cover images (runs once per schema bump).
+        // Schema 2: initial cover image pass (used broken file:// in <img> tag — retired).
+        // Schema 3: make new attachment attempt with wrong syntax (file ref as property — retired).
+        // Schema 4: HTTPS img src — Notes shows placeholder, never loads (retired).
+        // Schema 5: make new attachment with data — hangs (full JPEG too large for Apple Events).
+        // Schema 6: same with logging exposed — confirmed hang.
+        // Schema 7: resize to 80px thumbnail via sips before passing data (binary data — error -1700).
+        // Schema 8: pass POSIX file ref instead of binary data — Notes reads /tmp directly.
+        // Schema 9: trailing <p>&nbsp;</p> in HTML so cover attachment doesn't overlap last highlight.
+        // Schema 10: pass full-size cover via POSIX file ref directly — no sips thumbnail needed.
+        // Schema 11: clear stale attachments before adding cover; 3× trailing &nbsp; to prevent overlap.
+        // Schema 12: attach cover at beginning of note instead of end — better UX, no overlap.
+        // Schema 13: revert to end; use 5× <br> padding (Notes collapses empty <p> tags).
+        if existing.schemaVersion < 13 {
+            print("[KindleSync] Running cover image migration (schema → 13)…")
+            var migrationCount = 0
             for (asin, storedBook) in updatedState.books
             where addedByASIN[asin] == nil && !failedASINs.contains(asin) {
-                // Skip books with no cover URL — nothing new to add
-                guard let url = storedBook.coverImageURL, !url.isEmpty else { continue }
-                let coverBase64 = await fetchCoverImageBase64(url: url)
-                let html = NoteFormatter.buildHTML(book: storedBook, coverImageBase64: coverBase64)
+                // Skip books with no highlights or no cover URL — nothing to write
+                guard !storedBook.highlights.isEmpty,
+                      let urlString = storedBook.coverImageURL, !urlString.isEmpty else { continue }
+                let coverFile = await fetchCoverImage(asin: asin, url: urlString)
+                let html = NoteFormatter.buildHTML(book: storedBook)
                 let title = NoteFormatter.noteTitle(for: storedBook)
                 do {
-                    try await AppleNotesWriter.upsert(noteTitle: title, htmlBody: html)
-                    // Mark cover image confirmed
-                    if storedBook.coverImageURL != nil && coverBase64 == nil {
-                        updatedState.books[asin]?.coverImageURL = ""
-                    }
+                    try await AppleNotesWriter.upsert(noteTitle: title, htmlBody: html, coverImagePath: coverFile)
+                    migrationCount += 1
                 } catch {
-                    // Best-effort: individual migration failures don't fail the whole sync
                     print("[KindleSync] Migration write failed for '\(title)': \(error.localizedDescription)")
                 }
             }
-            updatedState.schemaVersion = 2
-            print("[KindleSync] Migration complete")
+            updatedState.schemaVersion = 13
+            print("[KindleSync] Migration complete (\(migrationCount) notes)")
         }
 
         try SyncStateStore.save(updatedState)
