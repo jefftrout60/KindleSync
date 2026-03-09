@@ -159,18 +159,43 @@ struct AppleNotesWriter {
 
         try process.run()
 
-        // Run in background thread to avoid blocking
+        // Run in background thread to avoid blocking.
+        // A serial queue + reference-type latch ensures the timeout and
+        // terminationHandler never both resume the continuation — only the
+        // first one through the `once.done` guard wins; the second is a no-op.
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            let q = DispatchQueue(label: "com.kindlesync.osascript")
+            // `let` binding (not var) avoids Swift 6 captured-var mutation warning;
+            // serial queue `q` guarantees exclusive access to `once.done`.
+            final class Once { var done = false }
+            let once = Once()
+
+            let timeout = DispatchWorkItem {
+                q.async {
+                    guard !once.done else { return }
+                    once.done = true
+                    process.terminate()
+                    continuation.resume(throwing: AppleNotesError.scriptFailed(
+                        "osascript timed out after 30 s (Notes may be unresponsive)"))
+                }
+            }
+            DispatchQueue.global().asyncAfter(deadline: .now() + 30, execute: timeout)
+
             process.terminationHandler = { proc in
-                if proc.terminationStatus == 0 {
-                    continuation.resume()
-                } else {
-                    let errData = pipe.fileHandleForReading.readDataToEndOfFile()
-                    let errMsg = String(data: errData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "unknown error"
-                    if errMsg.lowercased().contains("not authorized") || errMsg.lowercased().contains("permission") {
-                        continuation.resume(throwing: AppleNotesError.permissionDenied)
+                q.async {
+                    timeout.cancel()
+                    guard !once.done else { return }
+                    once.done = true
+                    if proc.terminationStatus == 0 {
+                        continuation.resume()
                     } else {
-                        continuation.resume(throwing: AppleNotesError.scriptFailed(errMsg))
+                        let errData = pipe.fileHandleForReading.readDataToEndOfFile()
+                        let errMsg = String(data: errData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "unknown error"
+                        if errMsg.lowercased().contains("not authorized") || errMsg.lowercased().contains("permission") {
+                            continuation.resume(throwing: AppleNotesError.permissionDenied)
+                        } else {
+                            continuation.resume(throwing: AppleNotesError.scriptFailed(errMsg))
+                        }
                     }
                 }
             }
