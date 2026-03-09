@@ -93,15 +93,34 @@ actor KindleSyncEngine {
         // Schema 11: clear stale attachments before adding cover; 3× trailing &nbsp; to prevent overlap.
         // Schema 12: attach cover at beginning of note instead of end — better UX, no overlap.
         // Schema 13: revert to end; use 5× <br> padding (Notes collapses empty <p> tags).
-        if existing.schemaVersion < 13 {
-            print("[KindleSync] Running cover image migration (schema → 13)…")
+        // Schema 14: embed cover as data URI in HTML body — Notes renders it as a File icon, not an image (retired).
+        // Schema 15: revert to schema 13 POSIX file ref approach; data URI strategy abandoned.
+        // Schema 16: scope note search to Kindle Highlights folder; delete-on-error to prevent ghost notes.
+        // Schema 17: replace "whose name is" filter with repeat loop — the whose clause treats ":" as an
+        //             HFS path separator in object specifiers, silently failing to match titles with colons.
+        // Schema 18: fix note title mismatch. Apple Notes derives a note's `name` from the first line of
+        //             the HTML body (<h2> = book.title), ignoring the explicitly-set name property. Prior
+        //             noteTitle() returned "book.title by book.author" which never matched the stored name,
+        //             causing every migration run to create a duplicate instead of updating. Fixed by making
+        //             noteTitle() return book.title only. Clear-and-recreate to eliminate accumulated dupes.
+        // Schema 19: stop setting `name` in `make new note` — let Notes derive it from the <h2> body content,
+        //             matching the behaviour of `set body` updates so new and updated notes look identical.
+        if existing.schemaVersion < 19 {
+            print("[KindleSync] Running migration (schema → 19): clearing duplicates and rewriting all notes…")
+            do {
+                try await AppleNotesWriter.clearKindleHighlightsFolder()
+            } catch {
+                print("[KindleSync] Warning: folder clear failed: \(error.localizedDescription)")
+            }
             var migrationCount = 0
             for (asin, storedBook) in updatedState.books
-            where addedByASIN[asin] == nil && !failedASINs.contains(asin) {
-                // Skip books with no highlights or no cover URL — nothing to write
-                guard !storedBook.highlights.isEmpty,
-                      let urlString = storedBook.coverImageURL, !urlString.isEmpty else { continue }
-                let coverFile = await fetchCoverImage(asin: asin, url: urlString)
+            where !failedASINs.contains(asin) {
+                // Skip books with no highlights — nothing to write
+                guard !storedBook.highlights.isEmpty else { continue }
+                var coverFile: URL? = nil
+                if let urlString = storedBook.coverImageURL, !urlString.isEmpty {
+                    coverFile = await fetchCoverImage(asin: asin, url: urlString)
+                }
                 let html = NoteFormatter.buildHTML(book: storedBook)
                 let title = NoteFormatter.noteTitle(for: storedBook)
                 do {
@@ -111,7 +130,7 @@ actor KindleSyncEngine {
                     print("[KindleSync] Migration write failed for '\(title)': \(error.localizedDescription)")
                 }
             }
-            updatedState.schemaVersion = 13
+            updatedState.schemaVersion = 19
             print("[KindleSync] Migration complete (\(migrationCount) notes)")
         }
 

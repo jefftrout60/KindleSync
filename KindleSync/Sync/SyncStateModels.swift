@@ -4,11 +4,20 @@ import Foundation
 
 struct SyncState: Codable {
     var books: [String: StoredBook]  // keyed by ASIN
-    var schemaVersion: Int = 0       // 0 = pre-v1.1 (needs migration); 2 = migrated
+    var schemaVersion: Int           // 0 = pre-v1.1 (needs migration)
 
     init() {
         self.books = [:]
         self.schemaVersion = 0
+    }
+
+    // Custom decoder so schemaVersion defaults to 0 when the key is absent
+    // (e.g. JSON written by v1.0 before the field existed). Swift's synthesised
+    // init(from:) treats missing required keys as a hard error.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.books = try c.decode([String: StoredBook].self, forKey: .books)
+        self.schemaVersion = try c.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 0
     }
 }
 

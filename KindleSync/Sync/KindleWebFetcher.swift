@@ -46,7 +46,9 @@ final class KindleWebFetcher: NSObject {
             wv.callAsyncJavaScript(kindleFetchScript, arguments: [:], in: nil, in: .defaultClient) { result in
                 switch result {
                 case .success(let value): continuation.resume(returning: value)
-                case .failure(let error): continuation.resume(throwing: error)
+                case .failure(let error):
+                    print("[KindleSync] ❌ JS error: \(error)")
+                    continuation.resume(throwing: error)
                 }
             }
         }

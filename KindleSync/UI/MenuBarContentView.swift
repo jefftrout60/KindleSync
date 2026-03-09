@@ -4,6 +4,7 @@ struct MenuBarContentView: View {
     @EnvironmentObject var syncManager: SyncManager
     @State private var selectedInterval: SyncInterval? = nil
     @State private var previousInterval: SyncInterval? = nil
+    @State private var showFirstSyncAlert: Bool = false
 
     var body: some View {
         if syncManager.isAuthenticated {
@@ -64,8 +65,33 @@ struct MenuBarContentView: View {
                 // Only notify when newly enabling (nil → non-nil) or disabling (non-nil → nil)
                 // Switching between intervals is a silent update (REQ-004)
                 let notify = previousInterval == nil || newValue == nil
+                // Show "First sync now?" if newly enabling with no prior sync history
+                if newValue != nil && previousInterval == nil && syncManager.lastSyncDate == nil {
+                    showFirstSyncAlert = true
+                }
                 previousInterval = newValue
                 syncManager.setSchedule(newValue, notify: notify)
+            }
+
+            // First sync prompt (inline — avoids popover dismissal race with system alerts)
+            if showFirstSyncAlert {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Run first sync now?")
+                        .font(.caption)
+                    HStack(spacing: 8) {
+                        Button("Sync Now") {
+                            showFirstSyncAlert = false
+                            Task { await syncManager.sync() }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                        Button("Later") {
+                            showFirstSyncAlert = false
+                        }
+                        .buttonStyle(.plain)
+                        .controlSize(.small)
+                    }
+                }
             }
 
             // Next scheduled sync display

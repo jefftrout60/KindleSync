@@ -33,6 +33,25 @@ struct AppleNotesWriter {
         ])
     }
 
+    /// Deletes every note in the "Kindle Highlights" folder across all accounts.
+    /// Used by the schema 18 migration to clear accumulated duplicates from prior
+    /// migration runs before recreating all notes with the corrected title format.
+    static func clearKindleHighlightsFolder() async throws {
+        let script = """
+        tell application "Notes"
+            repeat with searchAcct in accounts
+                if (exists folder "Kindle Highlights" of searchAcct) then
+                    set allNotes to every note of folder "Kindle Highlights" of searchAcct
+                    repeat with n in allNotes
+                        delete n
+                    end repeat
+                end if
+            end repeat
+        end tell
+        """
+        try await runScript(script, env: [:])
+    }
+
     static func ensureNotesPermission() async -> Bool {
         let script = "tell application \"Notes\" to get name"
         do {
@@ -53,23 +72,46 @@ struct AppleNotesWriter {
         set noteContent to read POSIX file bodyPath as «class utf8»
 
         tell application "Notes"
-            if not (exists folder "Kindle Highlights") then
-                make new folder with properties {name:"Kindle Highlights"}
+            -- Search all accounts for an existing "Kindle Highlights" folder so notes
+            -- created by older versions (without account qualification) are found in
+            -- whatever account they landed in. If no folder exists anywhere, create one
+            -- in account 1 (iCloud when enabled, On My Mac otherwise).
+            set targetFolder to missing value
+            repeat with searchAcct in accounts
+                if (exists folder "Kindle Highlights" of searchAcct) then
+                    set targetFolder to folder "Kindle Highlights" of searchAcct
+                    exit repeat
+                end if
+            end repeat
+            if targetFolder is missing value then
+                make new folder at account 1 with properties {name:"Kindle Highlights"}
+                set targetFolder to folder "Kindle Highlights" of account 1
             end if
-            set targetFolder to folder "Kindle Highlights"
-            -- Search all notes (not just the folder) so we find the note regardless
-            -- of which account's folder it landed in on first creation.
-            set matchingNotes to (every note whose name is noteName)
+            -- Scope search to the folder so we never match notes in Recently Deleted.
+            -- Use a repeat loop instead of a "whose name is" filter: the whose clause
+            -- mis-handles colons in note names (AppleScript treats ":" as a path separator
+            -- in object specifier filters), silently returning empty for titles like
+            -- "Name: Subtitle by Author". A plain loop comparison works correctly.
+            set matchingNotes to {}
+            repeat with n in (every note of targetFolder)
+                if name of n is noteName then
+                    set matchingNotes to matchingNotes & {n}
+                end if
+            end repeat
             if (count of matchingNotes) > 0 then
                 try
                     set body of (item 1 of matchingNotes) to noteContent
                     set theNote to item 1 of matchingNotes
                 on error
-                    -- Can't modify found note (e.g., it's in Recently Deleted); create a new one
-                    set theNote to make new note at targetFolder with properties {name:noteName, body:noteContent}
+                    -- set body failed (note has embedded objects or is otherwise immutable).
+                    -- Delete all matches so ghost notes don't accumulate, then create fresh.
+                    repeat with oldNote in matchingNotes
+                        delete oldNote
+                    end repeat
+                    set theNote to make new note at targetFolder with properties {body:noteContent}
                 end try
             else
-                set theNote to make new note at targetFolder with properties {name:noteName, body:noteContent}
+                set theNote to make new note at targetFolder with properties {body:noteContent}
             end if
             -- Attach cover image via file reference. Notes reads the file directly;
             -- no data passes through Apple Events so file size is not a concern.

@@ -40,7 +40,12 @@ struct NoteFormatter {
     // MARK: - Note Title
 
     static func noteTitle(for book: StoredBook) -> String {
-        "\(book.title) by \(book.author)"
+        // Must match the first visible text line of the HTML body (the <h2> tag).
+        // Apple Notes derives the note's `name` property from the body's first line,
+        // ignoring the `name` set via `make new note with properties`. If this string
+        // differs from the h2, Notes prepends it as an extra plain-text title, causing
+        // a duplicate header. Using just book.title keeps both in sync.
+        book.title
     }
 
     // MARK: - Private
