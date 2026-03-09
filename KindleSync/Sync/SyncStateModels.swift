@@ -69,6 +69,7 @@ enum SyncError: Error, LocalizedError {
     case notesError(String)
     case alreadyInProgress
     case permissionDenied(String)
+    case fetchValidationFailed(String)
 
     var errorDescription: String? {
         switch self {
@@ -84,6 +85,8 @@ enum SyncError: Error, LocalizedError {
             return "A sync is already in progress."
         case .permissionDenied(let msg):
             return "Permission denied: \(msg)"
+        case .fetchValidationFailed(let msg):
+            return "Fetch validation failed: \(msg)"
         }
     }
 }

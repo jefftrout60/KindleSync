@@ -45,6 +45,17 @@ actor KindleSyncEngine {
 
         // 3. Load existing state, diff, merge
         let existing = try SyncStateStore.load()
+
+        // Plausibility guard: if we previously synced N books but the fetch now
+        // returns zero, Amazon likely changed their DOM or returned an auth/error
+        // page instead of book data. Treat this as a failure rather than silently
+        // treating it as "no highlights" and potentially overwriting good state.
+        if !existing.books.isEmpty && allBooks.isEmpty {
+            throw SyncError.fetchValidationFailed(
+                "Fetch returned 0 books but \(existing.books.count) were previously synced. " +
+                "Amazon may have changed their page structure.")
+        }
+
         var (updatedState, addedByASIN) = SyncStateStore.merge(
             existing: existing,
             newBooks: allBooks,
