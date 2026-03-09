@@ -69,6 +69,21 @@ final class NoteFormatterTests: XCTestCase {
 
         XCTAssertFalse(html.contains("Jeff's Note:"), "Note label must not appear when note is nil")
     }
+
+    func testNoteTitle_withBookTitleAndAuthor_returnsOnlyTitle() {
+        let book = StoredBook(
+            asin: "B003",
+            title: "The Great Gatsby",
+            author: "F. Scott Fitzgerald",
+            highlights: []
+        )
+
+        let title = NoteFormatter.noteTitle(for: book)
+
+        XCTAssertEqual(title, "The Great Gatsby", "noteTitle should return exactly book.title")
+        XCTAssertFalse(title.contains(" by "), "noteTitle must not contain ' by '")
+        XCTAssertFalse(title.contains(book.author), "noteTitle must not contain the author name")
+    }
 }
 
 // MARK: - SyncStateStoreTests
@@ -296,6 +311,34 @@ final class CookieKeychainStoreTests: XCTestCase {
         let result = CookieKeychainStore.areCookiesExpired([cookie])
 
         XCTAssertFalse(result, "Session cookie with no expiresDate should not be treated as expired")
+    }
+}
+
+// MARK: - SyncStateDecodingTests
+
+final class SyncStateDecodingTests: XCTestCase {
+
+    private let decoder = JSONDecoder()
+
+    func testSyncState_jsonWithSchemaVersion_decodesExplicitValue() throws {
+        let jsonWith = """
+        {"books":{},"schemaVersion":5}
+        """.data(using: .utf8)!
+
+        let state = try decoder.decode(SyncState.self, from: jsonWith)
+
+        XCTAssertEqual(state.schemaVersion, 5, "schemaVersion should decode to the explicit value present in JSON")
+    }
+
+    func testSyncState_jsonWithoutSchemaVersion_defaultsToZero() throws {
+        // Simulates JSON written by v1.0 before schemaVersion was added
+        let jsonWithout = """
+        {"books":{}}
+        """.data(using: .utf8)!
+
+        let state = try decoder.decode(SyncState.self, from: jsonWithout)
+
+        XCTAssertEqual(state.schemaVersion, 0, "schemaVersion should default to 0 when the key is absent (v1.0 backward compatibility)")
     }
 }
 
