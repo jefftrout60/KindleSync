@@ -1,0 +1,70 @@
+{
+  "version": "1.1",
+  "timestamp": "2026-03-06-141016",
+  "branch_name": "main",
+  "task_name": "kindle-highlights",
+  "session_number": 1,
+  "progress_update": {
+    "summary": "We completed the full SPECTRE S→P→E→C→T→E cycle for KindleSync — a macOS menu bar app that syncs Kindle highlights to Apple Notes. This session focused on post-launch polish: fixed two bugs (stale sync time display, duplicate Apple Notes on upsert), ran /spectre:clean to remove dead code across the codebase, fixed Xcode test target configuration so unit tests actually run, expanded test coverage from 8 to 14 tests, and fixed two critical bugs found during the architecture review (lost highlights on Notes failure, premature JS injection on intermediate redirects). The app is in a clean, fully tested, production-ready state.",
+    "goal": "KindleSync macOS menu bar app — fetches Kindle highlights via WKWebView JS injection, deduplicates via JSON state, writes to Apple Notes via AppleScript. Success: auth → sync → notes pipeline working end-to-end with passing tests and clean codebase.",
+    "accomplished": [
+      "Fixed stale 'Last synced: now' display — switched from RelativeDateTimeFormatter to DateFormatter .short (exact clock time)",
+      "Fixed Apple Notes duplicate notes bug — changed AppleScript to use 'every note whose name is X' instead of scoped 'notes in targetFolder' to handle multi-account Notes setups",
+      "Ran /spectre:clean — removed KindleAPIClient.swift tombstone, dead storedCookies/lastSyncDate cluster in SyncManager, write-only lastFullSyncAt field, placeholder Settings stub, unread httpOnly Keychain field; fixed 3 stale test assertions",
+      "Fixed Xcode test target not running — corrected scheme BuildAction entry, TEST_HOST path (space in app name), DEVELOPMENT_TEAM mismatch, GENERATE_INFOPLIST_FILE missing",
+      "Expanded unit tests from 8 to 14 — added areCookiesExpired coverage (4 tests) and SyncStateStore merge edge cases (2 tests)",
+      "Fixed lost-highlights bug in KindleSyncEngine — failed Notes writes now revert book to pre-merge state so highlights are retried next sync",
+      "Fixed premature continuation resume in KindleWebFetcher — didFinish now only fires when WKWebView lands on read.amazon.com/notebook or auth page, not on intermediate redirects",
+      "Saved 3 SPECTRE knowledge skills: feature-kindlesync-architecture, gotchas-apple-notes-upsert, gotchas-xcode-test-config"
+    ],
+    "now": "All work complete and committed (commit 606e84d). Waiting to push remaining commits to GitHub. 14/14 tests passing. No open tasks.",
+    "next_steps": [
+      "Push remaining commits to GitHub (git push — was blocked by HTTPS auth, use Xcode Source Control or configure SSH)",
+      "Consider adding scheduling UI to the popover (daily/weekly/bi-weekly interval picker) — explicitly deferred during this session",
+      "Consider adding a 'last synced X books, Y highlights' count display in the popover status area"
+    ],
+    "confidence": "high",
+    "constraints": [
+      "App uses WKWebView JS injection against Amazon's notebook page — fragile against DOM changes by Amazon",
+      "No public Kindle API — auth relies on real browser cookie session",
+      "AppleScript upsert searches 'every note' globally — correct but slightly slower on large Notes libraries",
+      "Test coverage limited to pure logic (NoteFormatter, SyncStateStore, CookieKeychainStore) — KindleSyncEngine, KindleWebFetcher, AppleNotesWriter are untestable without DI seams"
+    ],
+    "decisions": [
+      "Use exact clock time (DateFormatter .short) instead of RelativeDateTimeFormatter — relative time goes stale since SwiftUI doesn't re-render on time passage",
+      "Apple Notes upsert searches all notes globally ('every note') not folder-scoped — prevents cross-account duplicates on multi-account Notes setups",
+      "KindleWebFetcher load continuation only resumes on final destination URL — prevents JS injection on intermediate Amazon redirect pages"
+    ],
+    "blockers": [],
+    "open_questions": [],
+    "risks": [
+      "Amazon DOM changes could break JS highlight extraction in KindleWebFetcher (no API stability guarantee)",
+      "App not on App Store — requires manual install and Accessibility/Automation permission grants"
+    ]
+  },
+  "working_set": {
+    "key_files": [
+      "KindleSync/Sync/KindleSyncEngine.swift",
+      "KindleSync/Sync/KindleWebFetcher.swift",
+      "KindleSync/Sync/SyncStateStore.swift",
+      "KindleSync/Sync/SyncStateModels.swift",
+      "KindleSync/Notes/AppleNotesWriter.swift",
+      "KindleSync/Auth/CookieKeychainStore.swift",
+      "KindleSync/App/SyncManager.swift",
+      "KindleSync/UI/MenuBarContentView.swift",
+      "KindleSyncTests/KindleSyncTests.swift",
+      ".claude/skills/feature-kindlesync-architecture/SKILL.md",
+      "docs/architecture_review.md"
+    ],
+    "active_ids": [],
+    "recent_commands": [
+      "xcodebuild test -scheme KindleSync -destination 'platform=macOS'",
+      "xcodebuild build -scheme KindleSync -destination 'platform=macOS'",
+      "git commit -m 'fix: prevent lost highlights on Notes failure; fix premature continuation resume'"
+    ]
+  },
+  "context": {
+    "wip_state": "clean",
+    "last_commit": "606e84d"
+  }
+}
